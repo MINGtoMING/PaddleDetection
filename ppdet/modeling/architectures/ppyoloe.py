@@ -44,7 +44,7 @@ class PPYOLOE(BaseArch):
     """
 
     __category__ = 'architecture'
-    __shared__ = ['for_distill']
+    __shared__ = ['for_distill', 'with_mask']
     __inject__ = ['post_process', 'ssod_loss']
 
     def __init__(self,
@@ -55,13 +55,15 @@ class PPYOLOE(BaseArch):
                  ssod_loss='SSODPPYOLOELoss',
                  for_distill=False,
                  feat_distill_place='neck_feats',
-                 for_mot=False):
+                 for_mot=False,
+                 with_mask=False):
         super(PPYOLOE, self).__init__()
         self.backbone = backbone
         self.neck = neck
         self.yolo_head = yolo_head
         self.post_process = post_process
         self.for_mot = for_mot
+        self.with_mask = with_mask
 
         # for ssod, semi-det
         self.is_teacher = False
@@ -110,13 +112,22 @@ class PPYOLOE(BaseArch):
             yolo_head_outs = self.yolo_head(neck_feats)
 
             if self.post_process is not None:
-                bbox, bbox_num, nms_keep_idx = self.post_process(
-                    yolo_head_outs, self.yolo_head.mask_anchors,
-                    self.inputs['im_shape'], self.inputs['scale_factor'])
+                if not self.with_mask:
+                    bbox, bbox_num, nms_keep_idx = self.post_process(
+                        yolo_head_outs, self.yolo_head.mask_anchors,
+                        self.inputs['im_shape'], self.inputs['scale_factor'])
+                else:
+                    bbox, bbox_num, mask, nms_keep_idx = self.post_process(
+                        yolo_head_outs, self.yolo_head.mask_anchors,
+                        self.inputs['im_shape'], self.inputs['scale_factor'])
 
             else:
-                bbox, bbox_num, nms_keep_idx = self.yolo_head.post_process(
-                    yolo_head_outs, self.inputs['scale_factor'])
+                if not self.with_mask:
+                    bbox, bbox_num, nms_keep_idx = self.yolo_head.post_process(
+                        yolo_head_outs, self.inputs['scale_factor'])
+                else:
+                    bbox, bbox_num, mask, nms_keep_idx = self.yolo_head.post_process(
+                        yolo_head_outs, self.inputs['scale_factor'])
 
             if self.use_extra_data:
                 extra_data = {}  # record the bbox output before nms, such like scores and nms_keep_idx
@@ -131,6 +142,8 @@ class PPYOLOE(BaseArch):
             else:
                 output = {'bbox': bbox, 'bbox_num': bbox_num}
 
+            if self.with_mask:
+                output['mask'] = mask
             return output
 
     def get_loss(self):
