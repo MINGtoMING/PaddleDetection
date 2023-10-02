@@ -80,7 +80,8 @@ class TaskAlignedAssigner(nn.Layer):
                 gt_bboxes,
                 pad_gt_mask,
                 bg_index,
-                gt_scores=None):
+                gt_scores=None,
+                return_index=False):
         r"""This code is based on
             https://github.com/fcjian/TOOD/blob/master/mmdet/core/bbox/assigners/task_aligned_assigner.py
 
@@ -101,6 +102,7 @@ class TaskAlignedAssigner(nn.Layer):
             pad_gt_mask (Tensor, float32): 1 means bbox, 0 means no bbox, shape(B, n, 1)
             bg_index (int): background index
             gt_scores (Tensor|None, float32) Score of gt_bboxes, shape(B, n, 1)
+            return_index (bool, optional): whether return assigned gt index
         Returns:
             assigned_labels (Tensor): (B, L)
             assigned_bboxes (Tensor): (B, L, 4)
@@ -189,5 +191,8 @@ class TaskAlignedAssigner(nn.Layer):
             max_metrics_per_instance + self.eps) * max_ious_per_instance
         alignment_metrics = alignment_metrics.max(-2).unsqueeze(-1)
         assigned_scores = assigned_scores * alignment_metrics
+
+        if return_index:
+            return assigned_labels, assigned_bboxes, assigned_scores, assigned_gt_index
 
         return assigned_labels, assigned_bboxes, assigned_scores

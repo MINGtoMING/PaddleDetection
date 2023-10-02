@@ -80,7 +80,8 @@ class ATSSAssigner(nn.Layer):
                 pad_gt_mask,
                 bg_index,
                 gt_scores=None,
-                pred_bboxes=None):
+                pred_bboxes=None,
+                return_index=False):
         r"""This code is based on
             https://github.com/fcjian/TOOD/blob/master/mmdet/core/bbox/assigners/atss_assigner.py
 
@@ -108,6 +109,7 @@ class ATSSAssigner(nn.Layer):
             gt_scores (Tensor|None, float32) Score of gt_bboxes,
                     shape(B, n, 1), if None, then it will initialize with one_hot label
             pred_bboxes (Tensor, float32, optional): predicted bounding boxes, shape(B, L, 4)
+            return_index (bool, optional): whether return assigned gt index
         Returns:
             assigned_labels (Tensor): (B, L)
             assigned_bboxes (Tensor): (B, L, 4)
@@ -221,5 +223,8 @@ class ATSSAssigner(nn.Layer):
             gather_scores = paddle.where(mask_positive_sum > 0, gather_scores,
                                          paddle.zeros_like(gather_scores))
             assigned_scores *= gather_scores.unsqueeze(-1)
+
+        if return_index:
+            return assigned_labels, assigned_bboxes, assigned_scores, assigned_gt_index
 
         return assigned_labels, assigned_bboxes, assigned_scores
