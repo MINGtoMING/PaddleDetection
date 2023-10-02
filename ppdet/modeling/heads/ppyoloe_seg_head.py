@@ -70,6 +70,7 @@ class PPYOLOESegHead(nn.Layer):
                  reg_range=None,
                  num_protos=32,
                  dim_protonet=256,
+                 mask_stride=4,
                  static_assigner_epoch=4,
                  use_varifocal_loss=True,
                  static_assigner='SegATSSAssigner',
@@ -104,6 +105,7 @@ class PPYOLOESegHead(nn.Layer):
             self.reg_range = (0, reg_max + 1)
         self.reg_channels = self.reg_range[1] - self.reg_range[0]
         self.num_protos = num_protos
+        self.mask_stride=mask_stride
         self.iou_loss = GIoULoss()
         self.loss_weight = loss_weight
         self.use_varifocal_loss = use_varifocal_loss
@@ -466,7 +468,7 @@ class PPYOLOESegHead(nn.Layer):
                     bbox_mask = mask_positive[i].unsqueeze(-1).tile([1, 4])
                     pos_assigned_bbox = paddle.masked_select(
                         assigned_bboxes[i], bbox_mask).reshape([-1, 4])
-                    pos_assigned_bbox /= 4.
+                    pos_assigned_bbox /= self.mask_stride
                     valid_mask = self._crop_mask(
                         paddle.ones_like(pos_pred_mask), pos_assigned_bbox)
 
@@ -668,6 +670,10 @@ class PPYOLOESegHead(nn.Layer):
             else:
                 bbox_pred, bbox_num, nms_keep_idx = self.nms(pred_bboxes,
                                                              pred_scores)
+                assert nms_keep_idx.numel() > 0
+                proto_h, proto_w = prototypes.shape[-2:]
+                origin_shape = [int(proto_h * self.mask_stride / float(scale_y[0])),
+                                int(proto_w * self.mask_stride / float(scale_x[0]))]
                 pred_coeffs = pred_coeffs.transpose([0, 2, 1])
                 batch_size = pred_coeffs.shape[0]
                 coeff_pred = paddle.gather(
@@ -676,7 +682,7 @@ class PPYOLOESegHead(nn.Layer):
                 mask_pred = paddle.einsum('bkp,bphw->bkhw', coeff_pred, prototypes)
                 mask_pred = F.interpolate(
                     mask_pred,
-                    scale_factor=[4 / scale_y[0], 4 / scale_x[0]],
+                    size=origin_shape,
                     mode='bilinear',
                     align_corners=False)
                 mask_pred = mask_pred.flatten(0, 1)
