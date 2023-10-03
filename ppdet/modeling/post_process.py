@@ -479,7 +479,7 @@ class DETRPostProcess(object):
                 mask_pred.sum([-2, -1]) + 1e-6)
             score_pred *= avg_mask_score
 
-        return mask_pred[0].astype('int32'), score_pred
+        return mask_pred.flatten(0, 1).astype('int32'), score_pred
 
     def __call__(self, head_out, im_shape, scale_factor, pad_shape):
         """

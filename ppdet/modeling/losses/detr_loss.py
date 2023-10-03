@@ -501,13 +501,14 @@ class MaskDINOLoss(DETRLoss):
                  },
                  aux_loss=True,
                  use_focal_loss=False,
+                 use_vfl=False,
                  num_sample_points=12544,
                  oversample_ratio=3.0,
                  important_sample_ratio=0.75):
         super(MaskDINOLoss, self).__init__(num_classes, matcher, loss_coeff,
-                                           aux_loss, use_focal_loss)
+                                           aux_loss, use_focal_loss, use_vfl)
         assert oversample_ratio >= 1
-        assert important_sample_ratio <= 1 and important_sample_ratio >= 0
+        assert 1 >= important_sample_ratio >= 0
 
         self.num_sample_points = num_sample_points
         self.oversample_ratio = oversample_ratio

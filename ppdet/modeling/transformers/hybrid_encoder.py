@@ -26,7 +26,7 @@ from ..layers import MultiHeadAttention
 from paddle import ParamAttr
 from paddle.regularizer import L2Decay
 
-__all__ = ['HybridEncoder']
+__all__ = ['HybridEncoder', 'MaskHybridEncoder']
 
 
 class CSPRepLayer(nn.Layer):
@@ -43,7 +43,7 @@ class CSPRepLayer(nn.Layer):
             in_channels, hidden_channels, ksize=1, stride=1, bias=bias, act=act)
         self.conv2 = BaseConv(
             in_channels, hidden_channels, ksize=1, stride=1, bias=bias, act=act)
-        self.bottlenecks = nn.Sequential(* [
+        self.bottlenecks = nn.Sequential(*[
             RepVggBlock(
                 hidden_channels, hidden_channels, act=act)
             for _ in range(num_blocks)
@@ -225,10 +225,10 @@ class HybridEncoder(nn.Layer):
             'Embed dimension must be divisible by 4 for 2D sin-cos position embedding'
         pos_dim = embed_dim // 4
         omega = paddle.arange(pos_dim, dtype=paddle.float32) / pos_dim
-        omega = 1. / (temperature**omega)
+        omega = 1. / (temperature ** omega)
 
-        out_w = grid_w.flatten()[..., None] @omega[None]
-        out_h = grid_h.flatten()[..., None] @omega[None]
+        out_w = grid_w.flatten()[..., None] @ omega[None]
+        out_h = grid_h.flatten()[..., None] @ omega[None]
 
         return paddle.concat(
             [
@@ -299,3 +299,82 @@ class HybridEncoder(nn.Layer):
                 channels=self.hidden_dim, stride=self.feat_strides[idx])
             for idx in range(len(self.in_channels))
         ]
+
+
+@register
+@serializable
+class MaskHybridEncoder(HybridEncoder):
+    __shared__ = ['depth_mult', 'act', 'trt', 'eval_size']
+    __inject__ = ['encoder_layer']
+
+    def __init__(self,
+                 in_channels=[256, 512, 1024, 2048],
+                 feat_strides=[4, 8, 16, 32],
+                 hidden_dim=256,
+                 use_encoder_idx=[3],
+                 num_encoder_layers=1,
+                 encoder_layer='TransformerLayer',
+                 pe_temperature=10000,
+                 expansion=1.0,
+                 depth_mult=1.0,
+                 act='silu',
+                 trt=False,
+                 eval_size=None,
+                 fuse_backbone_feat=True):
+        assert len(in_channels) == len(feat_strides)
+        self.fuse_backbone_feat = fuse_backbone_feat
+        if fuse_backbone_feat:
+            feat0_dim = in_channels.pop(0)
+            feat0_stride = feat_strides.pop(0)
+            assert feat0_stride == 4
+            use_encoder_idx = [i - 1 for i in use_encoder_idx]
+
+        assert feat_strides[0] == 8
+        super(MaskHybridEncoder, self).__init__(
+            in_channels=in_channels,
+            feat_strides=feat_strides,
+            hidden_dim=hidden_dim,
+            use_encoder_idx=use_encoder_idx,
+            num_encoder_layers=num_encoder_layers,
+            encoder_layer=encoder_layer,
+            pe_temperature=pe_temperature,
+            expansion=expansion,
+            depth_mult=depth_mult,
+            act=act,
+            trt=trt,
+            eval_size=eval_size)
+
+        if fuse_backbone_feat:
+            self.enc_mask_lateral = nn.Sequential(
+                nn.Conv2D(feat0_dim, hidden_dim, 1, bias_attr=False),
+                nn.BatchNorm2D(
+                    hidden_dim,
+                    weight_attr=ParamAttr(regularizer=L2Decay(0.0)),
+                    bias_attr=ParamAttr(regularizer=L2Decay(0.0))))
+
+        self.enc_mask_output = nn.Sequential(
+            BaseConv(hidden_dim, hidden_dim, 3, 1, act=act),
+            nn.Conv2D(hidden_dim, hidden_dim, 1))
+        xavier_uniform_(self.enc_mask_output[1].weight)
+
+    def forward(self, feats, for_mot=False, is_teacher=False):
+        if self.fuse_backbone_feat:
+            feat0 = feats.pop(0)
+
+        enc_feats = super(MaskHybridEncoder, self).forward(
+            feats=feats,
+            for_mot=for_mot,
+            is_teacher=is_teacher)
+
+        mask_feat = F.interpolate(
+            enc_feats[0],
+            scale_factor=2.0,
+            mode='bilinear',
+            align_corners=False)
+
+        if self.fuse_backbone_feat:
+            mask_feat += self.enc_mask_lateral(feat0)
+
+        mask_feat = self.enc_mask_output(mask_feat)
+
+        return enc_feats, mask_feat
