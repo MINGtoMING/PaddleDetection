@@ -21,7 +21,7 @@ import paddle
 from ppdet.core.workspace import register, create
 from .meta_arch import BaseArch
 
-__all__ = ['PPYOLOE', 'PPYOLOEWithAuxHead']
+__all__ = ['PPYOLOE', 'PPYOLOEWithAuxHead', 'PPYOLOEInst']
 # PP-YOLOE and PP-YOLOE+ are recommended to use this architecture, especially when use distillation or aux head
 # PP-YOLOE and PP-YOLOE+ can also use the same architecture of YOLOv3 in yolo.py when not use distillation or aux head
 
@@ -250,6 +250,67 @@ class PPYOLOEWithAuxHead(BaseArch):
                 output = {'bbox': bbox, 'bbox_num': bbox_num, 'extra_data': extra_data}
             else:
                 output = {'bbox': bbox, 'bbox_num': bbox_num}
+
+            return output
+
+    def get_loss(self):
+        return self._forward()
+
+    def get_pred(self):
+        return self._forward()
+
+
+@register
+class PPYOLOEInst(BaseArch):
+    """
+    PPYOLOE network, see https://arxiv.org/abs/2203.16250
+
+    Args:
+        backbone (nn.Layer): backbone instance
+        neck (nn.Layer): neck instance
+        yolo_head (nn.Layer): anchor_head instance
+    """
+
+    __category__ = 'architecture'
+
+    def __init__(self,
+                 backbone='CSPResNet',
+                 neck='CustomCSPPAN',
+                 yolo_head='PPYOLOEInstHead'):
+        super(PPYOLOEInst, self).__init__()
+        self.backbone = backbone
+        self.neck = neck
+        self.yolo_head = yolo_head
+
+    @classmethod
+    def from_config(cls, cfg, *args, **kwargs):
+        backbone = create(cfg['backbone'])
+
+        kwargs = {'input_shape': backbone.out_shape}
+        neck = create(cfg['neck'], **kwargs)
+
+        kwargs = {'input_shape': neck.out_shape}
+        yolo_head = create(cfg['yolo_head'], **kwargs)
+
+        return {
+            'backbone': backbone,
+            'neck': neck,
+            "yolo_head": yolo_head,
+        }
+
+    def _forward(self):
+        body_feats = self.backbone(self.inputs)
+        neck_feats = self.neck(body_feats)
+
+        if self.training:
+            yolo_losses = self.yolo_head(neck_feats, self.inputs)
+
+            return yolo_losses
+        else:
+            yolo_head_outs = self.yolo_head(neck_feats)
+            bbox, bbox_num, mask = self.yolo_head.post_process(
+                yolo_head_outs, self.inputs['scale_factor'])
+            output = {'bbox': bbox, 'bbox_num': bbox_num, 'mask': mask}
 
             return output
 
