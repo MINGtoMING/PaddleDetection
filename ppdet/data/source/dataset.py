@@ -104,7 +104,7 @@ class DetDataset(Dataset):
             assert isinstance(self.transform_stop_epoch, dict)
             new_transforms_cls = []
             for op in self.transform.transforms_cls:
-                op_name = op.__class.__name__
+                op_name = op.__class__.__name__
                 if op_name in self.transform_stop_epoch:
                     stop_epoch = self.transform_stop_epoch[op_name]
                     if self._epoch >= stop_epoch:

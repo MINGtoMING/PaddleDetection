@@ -39,13 +39,22 @@ RTDETRTransformerv2:
 
 epoch: 120
 
-LearningRate:
-  base_lr: 0.0001
-  schedulers:
-  - !PiecewiseDecay
-    gamma: 1.0
-    milestones: [100]
-    use_warmup: true
-  - !LinearWarmup
-    start_factor: 0.001
-    steps: 2000
+OptimizerBuilder:
+  clip_grad_by_norm: 0.1
+  regularizer: false
+  optimizer:
+    type: AdamW
+    weight_decay: 0.0001
+    param_groups:
+      - params: ['^(?=.*(?:norm|bn)).*$']
+        weight_decay: 0.
+
+
+TrainReader:
+  batch_transforms:
+    - BatchRandomResize: {target_size: [480, 512, 544, 576, 608, 640, 640, 640, 672, 704, 736, 768, 800], random_size: True, random_interp: True, keep_ratio: False}
+    - NormalizeImage: {mean: [0., 0., 0.], std: [1., 1., 1.], norm_type: none}
+    - NormalizeBox: {}
+    - BboxXYXY2XYWH: {}
+    - Permute: {}
+  transform_stop_epoch: {RandomDistort: 117, RandomExpand: 117, RandomCrop: 117}
