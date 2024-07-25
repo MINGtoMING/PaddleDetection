@@ -99,7 +99,19 @@ class DetDataset(Dataset):
         else:
             roidb['curr_iter'] = self._curr_iter
         self._curr_iter += 1
-
+        
+        if self.transform_stop_epoch:
+            assert isinstance(self.transform_stop_epoch, dict)
+            new_transforms_cls = []
+            for op in self.transform.transforms_cls:
+                op_name = op.__class.__name__
+                if op_name in self.transform_stop_epoch:
+                    stop_epoch = self.transform_stop_epoch[op_name]
+                    if self._epoch >= stop_epoch:
+                        continue
+                new_transforms_cls.append(op)
+            self.transform.transforms_cls = new_transforms_cls
+        
         return self.transform(roidb)
 
     def check_or_download_dataset(self):
@@ -111,6 +123,7 @@ class DetDataset(Dataset):
         self.cutmix_epoch = kwargs.get('cutmix_epoch', -1)
         self.mosaic_epoch = kwargs.get('mosaic_epoch', -1)
         self.pre_img_epoch = kwargs.get('pre_img_epoch', -1)
+        self.transform_stop_epoch = kwargs.get('transform_stop_epoch', None)
 
     def set_transform(self, transform):
         self.transform = transform

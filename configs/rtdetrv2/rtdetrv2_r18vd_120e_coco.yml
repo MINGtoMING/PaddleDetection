@@ -1,0 +1,51 @@
+_BASE_: [
+  '../datasets/coco_detection.yml',
+  '../runtime.yml',
+  '_base_/optimizer_6x.yml',
+  '_base_/rtdetrv2_r50vd.yml',
+  '_base_/rtdetrv2_reader.yml',
+]
+
+weights: output/rtdetrv2_r18_120e_coco/model_final
+find_unused_parameters: True
+log_iter: 200
+
+pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet18_vd_pretrained.pdparams
+ResNet:
+  depth: 18
+  variant: d
+  return_idx: [1, 2, 3]
+  freeze_at: -1
+  freeze_norm: false
+  norm_decay: 0.
+
+HybridEncoder:
+  hidden_dim: 256
+  use_encoder_idx: [2]
+  num_encoder_layers: 1
+  encoder_layer:
+    name: TransformerLayer
+    d_model: 256
+    nhead: 8
+    dim_feedforward: 1024
+    dropout: 0.
+    activation: 'gelu'
+  expansion: 0.5
+  depth_mult: 1.0
+
+RTDETRTransformerv2:
+  eval_idx: -1
+  num_decoder_layers: 3
+
+epoch: 120
+
+LearningRate:
+  base_lr: 0.0001
+  schedulers:
+  - !PiecewiseDecay
+    gamma: 1.0
+    milestones: [100]
+    use_warmup: true
+  - !LinearWarmup
+    start_factor: 0.001
+    steps: 2000

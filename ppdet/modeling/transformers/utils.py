@@ -55,7 +55,7 @@ def sigmoid_focal_loss(logit, label, normalizer=1.0, alpha=0.25, gamma=2.0):
     prob = F.sigmoid(logit)
     ce_loss = F.binary_cross_entropy_with_logits(logit, label, reduction="none")
     p_t = prob * label + (1 - prob) * (1 - label)
-    loss = ce_loss * ((1 - p_t)**gamma)
+    loss = ce_loss * ((1 - p_t) ** gamma)
 
     if alpha >= 0:
         alpha_t = alpha * label + (1 - alpha) * (1 - label)
@@ -111,6 +111,88 @@ def deformable_attention_core_func(value, value_spatial_shapes,
         sampling_value_list, axis=-2).flatten(-2) *
               attention_weights).sum(-1).reshape([bs, n_head * c, Len_q])
 
+    return output.transpose([0, 2, 1])
+
+
+def discrete_sample(x, grid):
+    """
+    Args:
+        x (Tensor): [N, C, H, W]
+        grid (Tensor): [N, grid_H, grid_W, 2]
+    Returns:
+        output (Tensor): [N, C, grid_H, grid_W]
+    """
+    N, C, H, W = x.shape
+    _, grid_H, grid_W, _ = grid.shape
+    spatial_shape = paddle.to_tensor([[W, H]], dtype=paddle.float32)
+    index = (grid * spatial_shape + 0.5).astype(paddle.int64).flatten(1, 2)
+    h_index = index[:, :, 1].clip(0, H - 1)
+    w_index = index[:, :, 0].clip(0, W - 1)
+    batch_index = paddle.arange(N).unsqueeze(-1).tile([1, grid_H * grid_W])
+    output = x[batch_index, :, h_index, w_index]
+    output = output.transpose([0, 2, 1]).reshape([N, C, grid_H, grid_W])
+    return output
+
+
+def deformable_attention_core_func_v2(value, value_spatial_shapes, sampling_locations,
+                                      attention_weights, num_points_list, sampling_method='default'):
+    """
+    Args:
+        value (Tensor): [batch_num, value_len, num_heads, head_dim]
+        value_spatial_shapes (Tensor|List): [n_levels, 2]
+        sampling_locations (Tensor): [batch_num, query_len, num_heads, total_num_points, 2]
+        attention_weights (Tensor): [batch_num, query_len, num_heads, total_num_points]
+        num_points_list (List): The number of sampling point corresponding to each level
+        sampling_method (str): default(grid_sample) or discrete(discrete_sample)
+
+    Returns:
+        output (Tensor): [batch_num, query_len, num_heads * head_dim]
+    """
+    assert sampling_method in ['default', 'discrete'], NotImplementedError
+    batch_num, _, num_heads, head_dim = value.shape
+    query_len = sampling_locations.shape[1]
+    num_levels = len(num_points_list)
+
+    value = value.transpose([0, 2, 3, 1]).flatten(0, 1)
+    split_shape = [h * w for h, w in value_spatial_shapes]
+    value_list = value.split(split_shape, axis=-1)
+    value_list = [value.reshape([batch_num * num_heads, head_dim, h, w])
+                  for value, (h, w) in zip(value_list, value_spatial_shapes)]
+
+    if sampling_method == 'default':
+        sampling_grids = 2 * sampling_locations - 1
+    else:
+        sampling_grids = sampling_locations
+
+    sampling_grids = sampling_grids.transpose([0, 2, 1, 3, 4]).flatten(0, 1)
+    sampling_grids_list = sampling_grids.split(num_points_list, axis=-2)
+
+    sampling_value_list = []
+    for idx in range(num_levels):
+        # value_list[idx]: [batch_num * num_heads, head_dim, h, w]
+        # sampling_grids_list[idx]: [batch_num * num_heads, query_len, num_points, 2]
+        # _sampling_value: [batch_num * num_heads, head_dim, query_len, num_points]
+        if sampling_method == 'default':
+            _sampling_value = F.grid_sample(
+                value_list[idx],
+                sampling_grids_list[idx],
+                mode='bilinear',
+                padding_mode='zeros',
+                align_corners=False)
+        else:
+            _sampling_value = discrete_sample(
+                value_list[idx],
+                sampling_grids_list[idx])
+        sampling_value_list.append(_sampling_value)
+
+    attn_weights = attention_weights.transpose([0, 2, 1, 3])
+    attn_weights = attn_weights.flatten(0, 1).unsqueeze(1)
+    sampling_value = paddle.concat(sampling_value_list, axis=-1)
+    # attn_weights: [batch_num * num_heads, 1, query_len, total_num_points]
+    # sampling_value: [batch_num * num_heads, head_dim, query_len, total_num_points]
+    # output: [batch_num * num_heads, head_dim, query_len]
+    output = (sampling_value * attn_weights).sum(-1)
+    output = output.reshape([batch_num, num_heads * head_dim, query_len])
     return output.transpose([0, 2, 1])
 
 
@@ -197,15 +279,15 @@ def get_denoising_training_group(targets,
     for i in range(num_group):
         if i == 0:
             attn_mask[max_gt_num * i:max_gt_num * (i + 1), max_gt_num * (i + 1):
-                      num_denoising] = True
+                                                           num_denoising] = True
         if i == num_group - 1:
             attn_mask[max_gt_num * i:max_gt_num * (i + 1), :max_gt_num *
-                      i] = True
+                                                            i] = True
         else:
             attn_mask[max_gt_num * i:max_gt_num * (i + 1), max_gt_num * (i + 1):
-                      num_denoising] = True
+                                                           num_denoising] = True
             attn_mask[max_gt_num * i:max_gt_num * (i + 1), :max_gt_num *
-                      i] = True
+                                                            i] = True
     attn_mask = ~attn_mask
     dn_meta = {
         "dn_positive_idx": dn_positive_idx,
@@ -286,7 +368,7 @@ def get_contrastive_denoising_training_group(targets,
         rand_sign = paddle.randint_like(input_query_bbox, 0, 2) * 2.0 - 1.0
         rand_part = paddle.rand(input_query_bbox.shape)
         rand_part = (rand_part + 1.0) * negative_gt_mask + rand_part * (
-            1 - negative_gt_mask)
+                1 - negative_gt_mask)
         rand_part *= rand_sign
         known_bbox += rand_part * diff
         known_bbox.clip_(min=0.0, max=1.0)
@@ -307,15 +389,15 @@ def get_contrastive_denoising_training_group(targets,
     for i in range(num_group):
         if i == 0:
             attn_mask[max_gt_num * 2 * i:max_gt_num * 2 * (i + 1), max_gt_num *
-                      2 * (i + 1):num_denoising] = True
+                                                                   2 * (i + 1):num_denoising] = True
         if i == num_group - 1:
             attn_mask[max_gt_num * 2 * i:max_gt_num * 2 * (i + 1), :max_gt_num *
-                      i * 2] = True
+                                                                    i * 2] = True
         else:
             attn_mask[max_gt_num * 2 * i:max_gt_num * 2 * (i + 1), max_gt_num *
-                      2 * (i + 1):num_denoising] = True
+                                                                   2 * (i + 1):num_denoising] = True
             attn_mask[max_gt_num * 2 * i:max_gt_num * 2 * (i + 1), :max_gt_num *
-                      2 * i] = True
+                                                                    2 * i] = True
     attn_mask = ~attn_mask
     dn_meta = {
         "dn_positive_idx": dn_positive_idx,
@@ -348,7 +430,7 @@ def get_sine_pos_embed(pos_tensor,
     scale = 2. * math.pi
     dim_t = 2. * paddle.floor_divide(
         paddle.arange(num_pos_feats), paddle.to_tensor(2))
-    dim_t = scale / temperature**(dim_t / num_pos_feats)
+    dim_t = scale / temperature ** (dim_t / num_pos_feats)
 
     def sine_func(x):
         x *= dim_t
@@ -381,7 +463,7 @@ def mask_to_box_coordinate(mask,
     y, x = paddle.meshgrid(
         paddle.arange(
             end=h, dtype=dtype), paddle.arange(
-                end=w, dtype=dtype))
+            end=w, dtype=dtype))
 
     x_mask = x * mask.astype(x.dtype)
     x_max = x_mask.flatten(-2).max(-1) + 1
