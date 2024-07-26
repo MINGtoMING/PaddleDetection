@@ -10,7 +10,7 @@ weights: output/rtdetrv2_r18_dsp_3x_coco/model_final
 find_unused_parameters: True
 log_iter: 200
 
-pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet18_vd_pretrained.pdparams
+pretrain_weights: https://bj.bcebos.com/v1/paddledet/models/rtdetrv2_r18vd_120e_coco.pdparams
 
 ResNet:
   depth: 18
@@ -40,7 +40,7 @@ OptimizerBuilder:
 
 TrainReader:
   batch_transforms:
-    - NormalizeImage: {mean: [ 0., 0., 0. ], std: [ 1., 1., 1. ], norm_type: none}
+    - NormalizeImage: {mean: [0., 0., 0. ], std: [1., 1., 1. ], norm_type: none}
     - NormalizeBox: {}
     - BboxXYXY2XYWH: {}
     - Permute: {}

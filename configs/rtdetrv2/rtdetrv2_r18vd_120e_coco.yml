@@ -39,7 +39,7 @@ OptimizerBuilder:
 
 TrainReader:
   batch_transforms:
-    - NormalizeImage: {mean: [ 0., 0., 0. ], std: [ 1., 1., 1. ], norm_type: none}
+    - NormalizeImage: {mean: [0., 0., 0.], std: [1., 1., 1.], norm_type: none}
     - NormalizeBox: {}
     - BboxXYXY2XYWH: {}
     - Permute: {}

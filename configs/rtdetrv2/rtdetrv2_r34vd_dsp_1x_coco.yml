@@ -10,7 +10,7 @@ weights: output/rtdetrv2_r34vd_dsp_1x_coco/model_final
 find_unused_parameters: True
 log_iter: 200
 
-pretrain_weights: https://bj.bcebos.com/v1/paddledet/models/pretrained/ResNet34_vd_pretrained.pdparams
+pretrain_weights: https://bj.bcebos.com/v1/paddledet/models/rtdetrv2_r34vd_120e_coco.pdparams
 
 ResNet:
   depth: 34

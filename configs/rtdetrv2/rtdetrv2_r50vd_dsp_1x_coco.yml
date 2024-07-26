@@ -10,6 +10,8 @@ weights: output/rtdetrv2_r50vd_dsp_1x_coco/model_final
 find_unused_parameters: True
 log_iter: 200
 
+pretrain_weights: https://bj.bcebos.com/v1/paddledet/models/rtdetrv2_r50vd_6x_coco.pdparams
+
 RTDETRTransformerv2:
   cross_attn_sampling_method: discrete
 

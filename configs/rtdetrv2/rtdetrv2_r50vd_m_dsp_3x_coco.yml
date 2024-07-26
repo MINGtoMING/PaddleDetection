@@ -10,6 +10,8 @@ weights: output/rtdetrv2_r50vd_m_dsp_3x_coco/model_final
 find_unused_parameters: True
 log_iter: 200
 
+pretrain_weights: https://bj.bcebos.com/v1/paddledet/models/rtdetrv2_r50vd_m_7x_coco.pdparams
+
 HybridEncoder:
   expansion: 0.5
   depth_mult: 1.0
