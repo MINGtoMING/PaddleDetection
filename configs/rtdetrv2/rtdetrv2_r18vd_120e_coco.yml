@@ -11,8 +11,10 @@ find_unused_parameters: True
 log_iter: 200
 
 pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet18_vd_pretrained.pdparams
+
 ResNet:
   depth: 18
+  norm_decay: 0.
   freeze_at: -1
   freeze_norm: false
 

@@ -14,6 +14,7 @@ pretrain_weights: https://bj.bcebos.com/v1/paddledet/models/pretrained/ResNet34_
 
 ResNet:
   depth: 34
+  norm_decay: 0.
   freeze_at: -1
   freeze_norm: false
 
