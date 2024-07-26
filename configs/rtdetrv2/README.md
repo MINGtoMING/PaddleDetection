@@ -31,6 +31,7 @@ FPS。而且，混合精度训练策略的使用使得训练速度提高了 15%�
 
 - RT-DETRv2 基础模型均使用4个GPU训练。
 - RT-DETRv2 在COCO train2017上训练，并在val2017上评估。
+- 基础模型的采样方法默认为`grid_sample`, 离散采样调优模型则使用`discrete_sample`, [详见](../../ppdet/modeling/transformers/utils.py)。
 - 离散采样调优模型使用对应基础模型权重作为预训练权重。
 
 ## 快速开始
