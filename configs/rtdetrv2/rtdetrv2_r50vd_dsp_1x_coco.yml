@@ -10,6 +10,9 @@ weights: output/rtdetrv2_r50vd_dsp_1x_coco/model_final
 find_unused_parameters: True
 log_iter: 200
 
+RTDETRTransformerv2:
+  cross_attn_sampling_method: discrete
+
 
 epoch: 12
 
