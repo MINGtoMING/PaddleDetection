@@ -18,7 +18,11 @@ TrainReader:
   drop_last: true
   collate_batch: false
   use_shared_memory: true
-  transform_stop_epoch: {RandomDistort: 71, RandomExpand: 71, RandomCrop: 71}
+  transform_schedulers: # [start_epoch, stop_epoch)
+    - RandomDistort: {start_epoch: 0, stop_epoch: 71}
+    - RandomExpand: {start_epoch: 0, stop_epoch: 71}
+    - RandomCrop: {start_epoch: 0, stop_epoch: 71}
+    - BatchRandomResize: {start_epoch: 0, stop_epoch: 71}
 
 
 EvalReader:

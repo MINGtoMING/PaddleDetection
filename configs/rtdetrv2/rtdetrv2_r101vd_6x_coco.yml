@@ -13,20 +13,10 @@ log_iter: 200
 pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet101_vd_ssld_pretrained.pdparams
 
 ResNet:
-  # index 0 stands for res2
   depth: 101
-  variant: d
-  norm_type: bn
-  freeze_at: 0
-  return_idx: [1, 2, 3]
-  lr_mult_list: [0.01, 0.01, 0.01, 0.01]
-  num_stages: 4
-  freeze_stem_only: True
 
 HybridEncoder:
   hidden_dim: 384
-  use_encoder_idx: [2]
-  num_encoder_layers: 1
   encoder_layer:
     name: TransformerLayer
     d_model: 384
@@ -35,3 +25,14 @@ HybridEncoder:
     dropout: 0.
     activation: 'gelu'
   expansion: 1.0
+
+
+OptimizerBuilder:
+  optimizer:
+    type: AdamW
+    weight_decay: 0.0001
+    param_groups:
+      - params: ['^(?=.*backbone)(?!.*norm).*$']
+        learning_rate: 0.000001
+      - params: ['^(?=.*(?:neck|transformer))(?=.*(?:norm|bn)).*$']
+        weight_decay: 0.

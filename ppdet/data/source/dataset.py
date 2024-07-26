@@ -96,21 +96,19 @@ class DetDataset(Dataset):
         if isinstance(roidb, Sequence):
             for r in roidb:
                 r['curr_iter'] = self._curr_iter
+                r['curr_epoch'] = self._epoch
         else:
             roidb['curr_iter'] = self._curr_iter
+            roidb['curr_epoch'] = self._epoch
         self._curr_iter += 1
         
-        if self.transform_stop_epoch:
-            assert isinstance(self.transform_stop_epoch, dict)
-            new_transforms_cls = []
-            for op in self.transform.transforms_cls:
-                op_name = op.__class__.__name__
-                if op_name in self.transform_stop_epoch:
-                    stop_epoch = self.transform_stop_epoch[op_name]
-                    if self._epoch >= stop_epoch:
-                        continue
-                new_transforms_cls.append(op)
-            self.transform.transforms_cls = new_transforms_cls
+        if self.transform_schedulers:
+            assert isinstance(self.transform_schedulers, list)
+            if isinstance(roidb, Sequence):
+                for r in roidb:
+                    r['transform_schedulers'] = self.transform_schedulers
+            else:
+                roidb['transform_schedulers'] = self.transform_schedulers
         
         return self.transform(roidb)
 
@@ -123,7 +121,7 @@ class DetDataset(Dataset):
         self.cutmix_epoch = kwargs.get('cutmix_epoch', -1)
         self.mosaic_epoch = kwargs.get('mosaic_epoch', -1)
         self.pre_img_epoch = kwargs.get('pre_img_epoch', -1)
-        self.transform_stop_epoch = kwargs.get('transform_stop_epoch', None)
+        self.transform_schedulers = kwargs.get('transform_schedulers', None)
 
     def set_transform(self, transform):
         self.transform = transform

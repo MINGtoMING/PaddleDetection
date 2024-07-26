@@ -24,9 +24,8 @@ ResNet:
   norm_type: bn
   freeze_at: 0
   return_idx: [1, 2, 3]
-  lr_mult_list: [0.1, 0.1, 0.1, 0.1]
   num_stages: 4
-  freeze_stem_only: True
+  freeze_norm: True
 
 HybridEncoder:
   hidden_dim: 256
@@ -57,6 +56,7 @@ RTDETRTransformerv2:
   label_noise_ratio: 0.5
   box_noise_scale: 1.0
   learnt_init_query: False
+  eval_idx: -1
   cross_attn_sampling_method: default
 
 DINOHead:
