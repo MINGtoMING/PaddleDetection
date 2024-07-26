@@ -2,7 +2,7 @@
 
 ## 简介
 
-RTDETRv2是基于 Transformer 的实时端到端检测器。它在SOTA的 RTDETR
+RT-DETRv2是基于 Transformer 的实时端到端检测器。它在SOTA的 RT-DETR
 的基础上，引入了灵活的解码器，并运用了一系列有效的训练策略。具体而言，我们为解码器的各种特征图建议了不同数量的采样点，在多个训练阶段采用动态数据增强策略，并为每个独特的模型确定特定的优化超参数。为适应各种部署方案，解码器现在提供了一个利用离散采样而非网格采样的选项。RT-DETRv2-R18
 在相同速度下相比 RT-DETR-R18 实现了 1.4 的提升，在 T4 GPU 上以 FP16 模式达到了 47.9 mAP 和 217
 FPS。而且，混合精度训练策略的使用使得训练速度提高了 15%，GPU 内存使用减少了 20%
@@ -10,25 +10,25 @@ FPS。而且，混合精度训练策略的使用使得训练速度提高了 15%�
 
 ## 基础模型
 
-|      Model      | Epoch |  Backbone  | Input shape | $AP^{val}$ | $AP^{val}_{50}$ | Params(M) | FLOPs(G) | T4 TensorRT FP16(FPS) |                                     Pretrained Model                                     |                  config                  |
-|:---------------:|:-----:|:----------:|:-----------:|:----------:|:---------------:|:---------:|:--------:|:---------------------:|:----------------------------------------------------------------------------------------:|:----------------------------------------:|
-|  RT-DETRv2-R18  |  120  | ResNet-18  |     640     |    47.9    |      64.9       |    20     |    60    |          217          | [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r18vd_dec3_6x_coco.pdparams) | [config](./rtdetrv2_r18vd_120e_coco.yml) |
-|  RT-DETRv2-R34  |  120  | ResNet-34  |     640     |    49.9    |      67.5       |    31     |    92    |          161          | [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r34vd_dec4_6x_coco.pdparams) | [config](./rtdetrv2_r34vd_120e_coco.yml) |
-| RT-DETRv2-R50-m |  84   | ResNet-50  |     640     |    51.9    |      69.9       |    36     |   100    |          145          |  [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r50vd_m_6x_coco.pdparams)   | [config](./rtdetrv2_r50vd_m_7x_coco.yml) |
-|  RT-DETRv2-R50  |  72   | ResNet-50  |     640     |    53.4    |      71.6       |    42     |   136    |          108          |   [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r50vd_6x_coco.pdparams)    |  [config](./rtdetrv2_r50vd_6x_coco.yml)  |
-| RT-DETRv2-R101  |  72   | ResNet-101 |     640     |    54.3    |      72.8       |    76     |   259    |          74           |   [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r101vd_6x_coco.pdparams)   | [config](./rtdetrv2_r101vd_6x_coco.yml)  |
+|      Model       | Epoch |  Backbone  | Input shape | $AP^{val}$ | $AP^{val}_{50}$ | Params(M) | FLOPs(G) | T4 TensorRT FP16(FPS) |                                     Pretrained Model                                     |                  config                  |
+|:----------------:|:-----:|:----------:|:-----------:|:----------:|:---------------:|:---------:|:--------:|:---------------------:|:----------------------------------------------------------------------------------------:|:----------------------------------------:|
+|  *RT-DETRv2-R18  |  120  | ResNet-18  |     640     |    47.7    |      64.7       |    20     |    60    |          217          | [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r18vd_dec3_6x_coco.pdparams) | [config](./rtdetrv2_r18vd_120e_coco.yml) |
+|  *RT-DETRv2-R34  |  120  | ResNet-34  |     640     |    49.8    |      67.3       |    31     |    92    |          161          | [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r34vd_dec4_6x_coco.pdparams) | [config](./rtdetrv2_r34vd_120e_coco.yml) |
+| *RT-DETRv2-R50-m |  84   | ResNet-50  |     640     |    51.7    |      69.7       |    36     |   100    |          145          |  [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r50vd_m_6x_coco.pdparams)   | [config](./rtdetrv2_r50vd_m_7x_coco.yml) |
+|  *RT-DETRv2-R50  |  72   | ResNet-50  |     640     |    53.3    |      71.5       |    42     |   136    |          108          |   [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r50vd_6x_coco.pdparams)    |  [config](./rtdetrv2_r50vd_6x_coco.yml)  |
+| *RT-DETRv2-R101  |  72   | ResNet-101 |     640     |    54.3    |      72.7       |    76     |   259    |          74           |   [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r101vd_6x_coco.pdparams)   | [config](./rtdetrv2_r101vd_6x_coco.yml)  |
 
 ## 离散采样调优模型
 
-|      Model      | Epoch | Backbone  | Input shape | $AP^{val}$ | $AP^{val}_{50}$ | Params(M) | FLOPs(G) | T4 TensorRT FP16(FPS) |                                     Pretrained Model                                     |                    config                    |
-|:---------------:|:-----:|:---------:|:-----------:|:----------:|:---------------:|:---------:|:--------:|:---------------------:|:----------------------------------------------------------------------------------------:|:--------------------------------------------:|
-|  RT-DETRv2-R18  |  120  | ResNet-18 |     640     |    47.4    |      64.8       |    20     |    60    |          217          | [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r18vd_dec3_6x_coco.pdparams) |  [config](./rtdetrv2_r18vd_dsp_3x_coco.yml)  |
-|  RT-DETRv2-R34  |  120  | ResNet-34 |     640     |    49.2    |      67.1       |    31     |    92    |          161          | [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r34vd_dec4_6x_coco.pdparams) |  [config](./rtdetrv2_r34vd_dsp_1x_coco.yml)  |
-| RT-DETRv2-R50-m |  84   | ResNet-50 |     640     |    51.4    |      69.7       |    36     |   100    |          145          |  [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r50vd_m_6x_coco.pdparams)   | [config](./rtdetrv2_r50vd_m_dsp_3x_coco.yml) |
-|  RT-DETRv2-R50  |  72   | ResNet-50 |     640     |    52.9    |      71.3       |    42     |   136    |          108          |   [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r50vd_6x_coco.pdparams)    |  [config](./rtdetrv2_r50vd_dsp_1x_coco.yml)  |
+|       Model       | Epoch | Backbone  | Input shape | $AP^{val}$ | $AP^{val}_{50}$ | Params(M) | FLOPs(G) | T4 TensorRT FP16(FPS) |                                     Pretrained Model                                     |                    config                    |
+|:-----------------:|:-----:|:---------:|:-----------:|:----------:|:---------------:|:---------:|:--------:|:---------------------:|:----------------------------------------------------------------------------------------:|:--------------------------------------------:|
+|  *RT-DETRv2-R18   |  120  | ResNet-18 |     640     |    47.2    |      64.7       |    20     |    60    |          217          | [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r18vd_dec3_6x_coco.pdparams) |  [config](./rtdetrv2_r18vd_dsp_3x_coco.yml)  |
+|  *RT-DETRv2-R34   |  120  | ResNet-34 |     640     |    49.1    |      66.9       |    31     |    92    |          161          | [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r34vd_dec4_6x_coco.pdparams) |  [config](./rtdetrv2_r34vd_dsp_1x_coco.yml)  |
+| *RT-DETRv2-R50-m  |  84   | ResNet-50 |     640     |    51.3    |      69.6       |    36     |   100    |          145          |  [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r50vd_m_6x_coco.pdparams)   | [config](./rtdetrv2_r50vd_m_dsp_3x_coco.yml) |
+|  *RT-DETRv2-R50   |  72   | ResNet-50 |     640     |    52.8    |      71.3       |    42     |   136    |          108          |   [download](https://bj.bcebos.com/v1/paddledet/models/rtdetr_r50vd_6x_coco.pdparams)    |  [config](./rtdetrv2_r50vd_dsp_1x_coco.yml)  |
 
 **注意事项:**
-
+- `*`表示该权重是从对应模型的PyTorch权重转换而来，故而部分模型精度会有轻微下降。
 - RT-DETRv2 基础模型均使用4个GPU训练。
 - RT-DETRv2 在COCO train2017上训练，并在val2017上评估。
 - 基础模型的采样方法默认为`grid_sample`, 离散采样调优模型则使用`discrete_sample`, [详见](../../ppdet/modeling/transformers/utils.py)。
@@ -138,7 +138,7 @@ trtexec --onnx=./rtdetrv2_r50vd_6x_coco.onnx \
         --avgRuns=100 \
         --fp16
 ```
-
+</details>
 
 ## 引用
 ```
