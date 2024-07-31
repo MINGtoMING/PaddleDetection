@@ -27,6 +27,7 @@ ResNet:
   return_idx: [1, 2, 3]
   num_stages: 4
   freeze_norm: True
+  freeze_stem_only: True
 
 HybridEncoder:
   hidden_dim: 256

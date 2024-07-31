@@ -1459,6 +1459,8 @@ class Trainer(object):
     def reset_norm_param_attr(self, layer, **kwargs):
         if isinstance(layer, (nn.BatchNorm2D, nn.LayerNorm, nn.GroupNorm)):
             src_state_dict = layer.state_dict()
+            weight_is_stop_gradient = layer.weight.stop_gradient
+            bias_is_stop_gradient = layer.bias.stop_gradient
             if isinstance(layer, nn.BatchNorm2D):
                 layer = nn.BatchNorm2D(
                     num_features=layer._num_features,
@@ -1477,6 +1479,8 @@ class Trainer(object):
                     epsilon=layer._epsilon,
                     **kwargs)
             layer.set_state_dict(src_state_dict)
+            layer.weight.stop_gradient = weight_is_stop_gradient
+            layer.bias.stop_gradient = bias_is_stop_gradient
         else:
             for name, sublayer in layer.named_children():
                 new_sublayer = self.reset_norm_param_attr(sublayer, **kwargs)
