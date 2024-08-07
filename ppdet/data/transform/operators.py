@@ -20,6 +20,8 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
+import itertools
+
 try:
     from collections.abc import Sequence
 except Exception:
@@ -4159,4 +4161,23 @@ class RandomErasingCrop(BaseOperator):
         sample = self.transform1(sample)
         sample = self.transform2(sample)
         sample = self.transform3(sample)
+        return sample
+
+
+@register_op
+class TextTokenizer(BaseOperator):
+    def __init__(self, model_name='openai/clip-vit-base-patch32'):
+        super(TextTokenizer, self).__init__()
+        from paddlenlp.transformers import AutoTokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    def apply(self, sample, context=None):
+        res = self.tokenizer(text=sample['text'],
+                             return_attention_mask=True,
+                             return_tensors='pd',
+                             padding=True)
+        text_token = res['input_ids']
+        text_token_mask = res['attention_mask']
+        sample['text_token'] = text_token
+        sample['text_token_mask'] = text_token_mask
         return sample

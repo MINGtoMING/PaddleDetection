@@ -39,6 +39,7 @@ from . import focalnet
 from . import vit_mae
 from . import hgnet_v2
 from . import clrnet_resnet
+from . import clip_from_pretrained
 
 from .vgg import *
 from .resnet import *
@@ -68,3 +69,4 @@ from .vitpose import *
 from .vit_mae import *
 from .hgnet_v2 import *
 from .clrnet_resnet import *
+from .clip_from_pretrained import *

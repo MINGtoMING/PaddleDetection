@@ -500,6 +500,11 @@ class DETRPostProcess(object):
                 shape [bs], and is N.
         """
         bboxes, logits, masks = head_out
+
+        # update num_classes in ovd
+        if self.num_classes != logits.shape[-1]:
+            self.num_classes = logits.shape[-1]
+
         if self.dual_queries:
             num_queries = logits.shape[1]
             logits, bboxes = logits[:, :int(num_queries // (self.dual_groups + 1)), :], \
