@@ -53,13 +53,12 @@ class OVDDataSet(DetDataset):
         self.load_crowd = load_crowd
 
     def check_or_download_dataset(self):
-        # assert os.path.exists(self.dataset_dir)
-        # annotation_path = os.path.join(self.dataset_dir, self.anno_path)
-        # assert os.path.isfile(annotation_path)
-        # for _, sub_image_dir in self.image_dir.items():
-        #     sub_image_path = os.path.join(self.dataset_dir, sub_image_dir)
-        #     assert os.path.isdir(sub_image_path)
-        pass
+        assert os.path.exists(self.dataset_dir)
+        annotation_path = os.path.join(self.dataset_dir, self.anno_path)
+        assert os.path.isfile(annotation_path)
+        for _, sub_image_dir in self.image_dir.items():
+            sub_image_path = os.path.join(self.dataset_dir, sub_image_dir)
+            assert os.path.isdir(sub_image_path)
 
     def parse_dataset(self):
         anno_path = os.path.join(self.dataset_dir, self.anno_path)
@@ -86,10 +85,10 @@ class OVDDataSet(DetDataset):
 
             im_path = os.path.join(image_dir[source], im_fname)
 
-            # if not os.path.exists(im_path):
-            #     logger.warning('Illegal image file: {}, and it will be '
-            #                    'ignored'.format(im_path))
-            #     continue
+            if not os.path.exists(im_path):
+                logger.warning('Illegal image file: {}, and it will be '
+                               'ignored'.format(im_path))
+                continue
 
             if im_w < 0 or im_h < 0:
                 logger.warning(
