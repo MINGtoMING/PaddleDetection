@@ -4162,22 +4162,79 @@ class RandomErasingCrop(BaseOperator):
         sample = self.transform2(sample)
         sample = self.transform3(sample)
         return sample
+    
+    
+@register_op
+class RandomLoadText(BaseOperator):
+    def __init__(self, 
+                 max_num_samples=80,
+                 padding_to_max=False,
+                 padding_value=''):
+        super(RandomLoadText, self).__init__()
+        self.max_num_samples = max_num_samples
+        self.padding_to_max = padding_to_max
+        self.padding_value = padding_value
+
+    def apply(self, sample, context=None):
+        num_classes = len(sample['texts'])
+        positive_labels = set(sample['gt_class'].flatten().tolist())
+
+        if len(positive_labels) > self.max_num_samples:
+            positive_labels = set(random.sample(list(positive_labels),
+                                  k=self.max_num_samples))
+        
+        num_neg_samples = min(num_classes, self.max_num_samples) - len(positive_labels)
+            
+        candidate_neg_labels = []
+        for idx in range(num_classes):
+            if idx not in positive_labels:
+                candidate_neg_labels.append(idx)
+        negative_labels = random.sample(
+            candidate_neg_labels, k=num_neg_samples)
+        
+        sampled_labels = list(positive_labels) + list(negative_labels)
+        random.shuffle(sampled_labels)
+        
+        label2ids = {label: i for i, label in enumerate(sampled_labels)}
+        gt_valid_mask = np.zeros(len(sample['gt_bbox']), dtype=bool)
+        for idx, label in enumerate(sample['gt_class'].flatten().tolist()):
+            if label in label2ids:
+                gt_valid_mask[idx] = True
+                sample['gt_class'][idx, 0] = label2ids[label]
+        sample['gt_bboxes'] = sample['gt_bbox'][gt_valid_mask]
+        sample['gt_class'] = sample['gt_class'][gt_valid_mask]
+        
+        texts = []
+        for label in sampled_labels:
+            cls_caps = sample['texts'][label]
+            assert len(cls_caps) > 0
+            cap_id = random.randrange(len(cls_caps))
+            sel_cls_cap = cls_caps[cap_id]
+            texts.append(sel_cls_cap)
+
+        if self.padding_to_max:
+            num_valid_labels = len(positive_labels) + len(negative_labels)
+            num_padding = self.max_num_samples - num_valid_labels
+            if num_padding > 0:
+                texts += [self.padding_value] * num_padding
+
+        sample['texts'] = texts
+        
+        return sample
 
 
 @register_op
-class TextTokenizer(BaseOperator):
-    def __init__(self, model_name='openai/clip-vit-base-patch32'):
-        super(TextTokenizer, self).__init__()
-        from paddlenlp.transformers import AutoTokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+class LoadText(BaseOperator):
+    def __init__(self):
+        super(LoadText, self).__init__()
 
     def apply(self, sample, context=None):
-        res = self.tokenizer(text=sample['text'],
-                             return_attention_mask=True,
-                             return_tensors='pd',
-                             padding=True)
-        text_token = res['input_ids']
-        text_token_mask = res['attention_mask']
-        sample['text_token'] = text_token
-        sample['text_token_mask'] = text_token_mask
+        texts = []
+        for idx, cls_caps in enumerate(sample['texts']):
+            assert len(cls_caps) > 0
+            sel_cls_cap = cls_caps[0]
+            texts.append(sel_cls_cap)
+
+        sample['texts'] = texts
         return sample
+

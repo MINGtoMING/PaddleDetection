@@ -1,0 +1,19 @@
+metric: COCO
+num_classes: 80
+
+TrainDataset:
+  name: OVDDataSet
+  image_dir: {'obj365': 'objects365v1/train', 'flickr': 'flickr/images', 'gqa': 'mixed_grounding/images'}
+  anno_path: obj365_goldg.json
+  dataset_dir: dataset
+
+EvalDataset:
+  name: OVDDataSet
+  image_dir: {'coco': 'coco/val2017'}
+  anno_path: coco_val_ovd.json
+  dataset_dir: dataset
+
+# TestDataset:
+#   name: ImageFolder
+#   anno_path: annotations/instances_val2017.json # also support txt (like VOC's label_list.txt)
+#   dataset_dir: dataset/coco # if set, anno_path will be 'dataset_dir/anno_path'

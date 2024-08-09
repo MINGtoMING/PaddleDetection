@@ -16,6 +16,8 @@ import os
 
 import numpy as np
 
+from tqdm import tqdm
+
 from ppdet.core.workspace import register, serializable
 from ppdet.utils.logger import setup_logger
 from .dataset import DetDataset
@@ -76,7 +78,7 @@ class OVDDataSet(DetDataset):
         records = []
         ct = 0
 
-        for img_id in img_ids:
+        for img_id in tqdm(img_ids, desc='parse_dataset'):
             img_anno = coco.loadImgs([img_id])[0]
             im_fname = img_anno['file_name']
             im_w = float(img_anno['width'])
@@ -179,6 +181,26 @@ class OVDDataSet(DetDataset):
                     'ambulance', 'asparagus', 'hoverboard', 'pasta', 'target',
                     'hotair balloon', 'chainsaw', 'lobster', 'iron',
                     'flashlight'
+                ]
+                texts = [text.split('/') for text in texts]
+            elif source == 'coco':
+                texts = [
+                    'person', 'bicycle', 'car', 'motorcycle', 'airplane',
+                    'bus', 'train', 'truck', 'boat', 'traffic light',
+                    'fire hydrant', 'stop sign', 'parking meter', 'bench',
+                    'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
+                    'bear', 'zebra', 'giraffe', 'backpack', 'umbrella',
+                    'handbag', 'tie', 'suitcase', 'frisbee', 'skis',
+                    'snowboard', 'sports ball', 'kite', 'baseball bat',
+                    'baseball glove', 'skateboard', 'surfboard',
+                    'tennis racket', 'bottle', 'wine glass', 'cup', 'fork',
+                    'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich',
+                    'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
+                    'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
+                    'dining table', 'toilet', 'tv', 'laptop', 'mouse',
+                    'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
+                    'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
+                    'scissors', 'teddy bear', 'hair drier', 'toothbrush'
                 ]
                 texts = [text.split('/') for text in texts]
 

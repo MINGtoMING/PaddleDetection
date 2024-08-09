@@ -1,0 +1,11 @@
+_BASE_: [
+  '../datasets/obj365_goldg.yml',
+  '../runtime.yml',
+  '_base_/optimizer_6x.yml',
+  '_base_/ovrtdetr_r50vd.yml',
+  '_base_/ovrtdetr_reader.yml',
+]
+
+weights: output/ovrtdetr_r50vd_6x_obj365_goldg/model_final
+find_unused_parameters: True
+log_iter: 5
