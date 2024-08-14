@@ -1,0 +1,38 @@
+_BASE_: [
+  '../datasets/obj365_goldg.yml',
+  '../runtime.yml',
+  '_base_/optimizer_6x.yml',
+  '_base_/ovrtdetr_r50vd.yml',
+  '_base_/ovrtdetr_reader.yml',
+]
+
+weights: output/ovrtdetr_r18_6x_obj365_goldg/model_final
+find_unused_parameters: True
+log_iter: 200
+
+pretrain_weights: https://bj.bcebos.com/v1/paddledet/models/rtdetr_r18vd_1x_objects365.pdparams
+ResNet:
+  depth: 18
+  variant: d
+  return_idx: [1, 2, 3]
+  freeze_at: -1
+  freeze_norm: false
+  norm_decay: 0.
+
+HybridEncoder:
+  hidden_dim: 256
+  use_encoder_idx: [2]
+  num_encoder_layers: 1
+  encoder_layer:
+    name: TransformerLayer
+    d_model: 256
+    nhead: 8
+    dim_feedforward: 1024
+    dropout: 0.
+    activation: 'gelu'
+  expansion: 0.5
+  depth_mult: 1.0
+
+OVRTDETRTransformer:
+  eval_idx: -1
+  num_decoder_layers: 3

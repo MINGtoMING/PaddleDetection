@@ -4160,3 +4160,81 @@ class RandomErasingCrop(BaseOperator):
         sample = self.transform2(sample)
         sample = self.transform3(sample)
         return sample
+
+
+@register_op
+class RandomLoadText(BaseOperator):
+    def __init__(self, 
+                 max_text_len=80,
+                 padding_to_max=True,
+                 padding_value=''):
+        super(RandomLoadText, self).__init__()
+        self.max_text_len = max_text_len
+        self.padding_to_max = padding_to_max
+        self.padding_value = padding_value
+
+    def apply(self, sample, context=None):  
+        ori_texts = sample["texts"]
+        ori_text_len = len(ori_texts)
+        pos_labels = np.unique(sample['gt_class']).tolist()
+        if len(pos_labels) > self.max_text_len:
+            pos_labels = random.sample(pos_labels, k=self.max_text_len)
+        
+        pos_label_num = len(pos_labels)
+        neg_label_num = min(ori_text_len, self.max_text_len) - pos_label_num
+        
+        neg_labels = [i for i in range(ori_text_len) if i not in pos_labels]
+        neg_labels = random.sample(neg_labels, k=neg_label_num)
+        merged_labels = pos_labels + neg_labels
+        random.shuffle(merged_labels)
+        
+        label2id = {label: i for i, label in enumerate(merged_labels)}
+        num_boxes = len(sample['gt_bbox'])
+        valid_mask = np.zeros(num_boxes, dtype=bool)
+        for i in range(num_boxes):
+            label = int(sample['gt_class'][i])
+            if label in label2id:
+                valid_mask[i] = True
+                sample['gt_class'][i] = label2id[label]
+        sample['gt_class'] = sample['gt_class'][valid_mask]
+        sample['gt_bbox'] = sample['gt_bbox'][valid_mask]
+        
+        merged_texts = []
+        for label in merged_labels:
+            if isinstance(ori_texts[label], list):
+                merged_texts.append(random.choice(ori_texts[label]))
+            else:
+                merged_texts.append(ori_texts[label])
+        
+        if self.padding_to_max:
+            padding_num = self.max_text_len - len(merged_texts)
+            if padding_num > 0:
+                for _ in range(padding_num):
+                    merged_texts.append(self.padding_value)
+        
+        sample['texts'] = merged_texts
+        return sample
+
+@register_op
+class LoadText(BaseOperator):
+    def __init__(self, ann_file=None):
+        super(LoadText, self).__init__()
+        self.texts = None
+        if ann_file is not None:
+            from pycocotools.coco import COCO
+            coco = COCO(ann_file)
+            cats = coco.loadCats(coco.getCatIds())
+            self.texts = {cat['name'] for cat in cats}
+
+    def apply(self, sample, context=None):
+        if self.texts is None:
+            texts = []
+            for text in sample['texts']:
+                if isinstance(text, list):
+                    texts.append(text[0])
+                else:
+                    texts.append(text)
+            sample['texts'] = texts
+        else:
+            sample['texts'] = self.texts
+        return sample

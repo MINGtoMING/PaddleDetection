@@ -41,7 +41,7 @@ __all__ = [
     'PadBatch', 'BatchRandomResize', 'Gt2YoloTarget', 'Gt2FCOSTarget',
     'Gt2TTFTarget', 'Gt2Solov2Target', 'Gt2SparseTarget', 'PadMaskBatch',
     'Gt2GFLTarget', 'Gt2CenterNetTarget', 'Gt2CenterTrackTarget', 'PadGT',
-    'PadRGT', 'BatchRandomResizeForSSOD'
+    'PadRGT', 'BatchRandomResizeForSSOD', 'TextTokenizer',
 ]
 
 
@@ -1538,3 +1538,33 @@ class BatchRandomResizeForSSOD(BaseOperator):
 
         resizer = Resize(target_size, keep_ratio=self.keep_ratio, interp=interp)
         return [resizer(samples, context=context), index]
+
+
+@register_op
+class TextTokenizer(BaseOperator):
+    def __init__(self, model_name='openai/clip-vit-base-patch32'):
+        super(TextTokenizer, self).__init__()
+        from paddlenlp.transformers import AutoTokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    def __call__(self, samples, context=None):
+        batch_num = len(samples)
+        texts = []
+        text_len = []
+        for sample in samples:
+            text_len.append(len(sample['texts']))
+            texts.extend(sample.pop('texts'))
+        assert len(np.unique(text_len)) == 1
+        out = self.tokenizer(text=texts,
+                            return_attention_mask=True,
+                            return_tensors='np',
+                            padding=True)
+        text_token = out['input_ids']
+        text_token_mask = out['attention_mask']
+        text_tokens = np.split(text_token, batch_num)
+        text_token_masks = np.split(text_token_mask, batch_num)
+        
+        for idx, sample in enumerate(samples):
+            sample['text_token'] = text_tokens[idx]
+            sample['text_token_mask'] = text_token_masks[idx]
+        return samples
