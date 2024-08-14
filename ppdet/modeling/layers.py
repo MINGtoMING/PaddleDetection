@@ -1384,6 +1384,8 @@ class CLIPTextModelFromPretrained(nn.Layer):
         if text_token_mask is not None:
             text_token_mask = text_token_mask.flatten(0, 1)
         text_feats = self.model(input_ids=text_token,
-                                attention_mask=text_token_mask)['text_embeds']
+                                attention_mask=text_token_mask,
+                                return_dict=False)[0]
+
         text_feats = text_feats.reshape([batch_num, word_num, -1])
         return text_feats
