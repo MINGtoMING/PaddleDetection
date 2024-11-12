@@ -1,0 +1,105 @@
+architecture: CoDETR
+pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet50_cos_pretrained.pdparams
+hidden_dim: 256
+use_focal_loss: True
+
+CoDETR:
+  backbone: ResNet
+  head: CoDINOHead
+  post_process: DETRPostProcess
+
+ResNet:
+  depth: 50
+  norm_type: bn
+  freeze_at: 0
+  return_idx: [0, 1, 2, 3]
+  lr_mult_list: [0.0, 0.1, 0.1, 0.1]
+  num_stages: 4
+
+CoDINOHead:
+  transformer: CoDINOTransformer
+  query_head: DINOHead
+  rpn_head: RPNHead
+  roi_head: BBoxHead
+
+CoDINOTransformer:
+  num_queries: 900
+  position_embed_type: sine
+  num_levels: 5
+  nhead: 8
+  num_encoder_layers: 6
+  num_decoder_layers: 6
+  dim_feedforward: 2048
+  dropout: 0.0
+  activation: relu
+  pe_temperature: 20
+  pe_offset: 0.0
+  num_denoising: 100
+  label_noise_ratio: 0.5
+  box_noise_scale: 1.0
+  learnt_init_query: True
+
+DINOHead:
+  loss:
+    name: DINOLoss
+    loss_coeff: {class: 1, bbox: 5, giou: 2}
+    aux_loss: True
+    matcher:
+      name: HungarianMatcher
+      matcher_coeff: {class: 2, bbox: 5, giou: 2}
+
+RPNHead:
+  anchor_generator:
+    aspect_ratios: [0.5, 1.0, 2.0]
+    anchor_sizes:
+      # [stride * 4 * 2**(i/3) for i in range(3)]
+      - [16.0, 20.15873679831797, 25.39841683149119]
+      - [32.0, 40.31747359663594, 50.79683366298238]
+      - [64.0, 80.63494719327188, 101.59366732596476]
+      - [128.0, 161.26989438654377, 203.18733465192952]
+      - [256.0, 322.53978877308754, 406.37466930385904]
+      - [512.0, 645.0795775461751, 812.7493386077181]
+    strides: [4.0, 8.0, 16.0, 32.0, 64.0, 128.0]
+  rpn_target_assign:
+    batch_size_per_im: 256
+    fg_fraction: 0.5
+    negative_overlap: 0.3
+    positive_overlap: 0.7
+    use_random: True
+  train_proposal:
+    min_size: 0.0
+    nms_thresh: 0.7
+    pre_nms_top_n: 2000
+    post_nms_top_n: 1000
+    topk_after_collect: True
+  test_proposal:
+    min_size: 0.0
+    nms_thresh: 0.7
+    pre_nms_top_n: 1000
+    post_nms_top_n: 1000
+
+BBoxHead:
+  head: TwoFCHead
+  roi_extractor:
+    resolution: 7
+    spatial_scale: [0.25, 0.125, 0.0625, 0.03125, 0.015625]
+    sampling_ratio: 0
+    canconical_level: 2
+    canonical_size: 56
+    start_level: 0
+    end_level: 4
+    aligned: True
+  bbox_assigner: BBoxAssigner
+
+BBoxAssigner:
+  batch_size_per_im: 512
+  bg_thresh: 0.5
+  fg_thresh: 0.5
+  fg_fraction: 0.25
+  use_random: True
+
+TwoFCHead:
+  out_channel: 1024
+
+DETRPostProcess:
+  num_top_queries: 300
